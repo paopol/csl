@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-// #define CSL_IMPLEMENTATION
+#define CSL_IMPLEMENTATION
 #include "csl.h"
 
 

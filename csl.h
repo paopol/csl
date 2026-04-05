@@ -10,8 +10,7 @@
 #include <time.h>
 
 
-#define CSL_IMPLEMENTATION
-#ifdef CSL_IMPLEMENTATION
+/* #define CSL_IMPLEMENTATION */
 
 /**
  * MICRO DEFINITIONS FOR CONSTANT
@@ -27,7 +26,6 @@
 #define csl_time_expand_all(t)      (t).year, (t).month, (t).mday, (t).hour, (t).minute, (t).second
 
 #define csl_null_ptr ((void *)0)
-
 
 /**
  * MICRO DEFINITIONS FOR BASIC UTIL
@@ -153,6 +151,7 @@
 #define csl_log_cnts(format, ...)   csl_log_write(csl_log_level_cnts, format, ##__VA_ARGS__)
 
 
+
 /**
  * enumeration of boolean
  */
@@ -177,6 +176,16 @@ typedef struct
 {
     csl_buffer_object(void)
 } csl_buffer_object_header_t;
+
+typedef struct
+{
+    csl_list_object(void)
+} csl_list_object_header_t;
+
+typedef struct
+{
+    csl_bag_object(void)
+} csl_bag_object_header_t;
 
 
 /**
@@ -203,7 +212,6 @@ typedef struct
     int yday;   /* 1~366 (not 0~365), the day of the year */
     int isdst;  /* is dst (daylight saving time) */
 } csl_time_t;
-
 
 /**
  * enumeration of log level
@@ -233,7 +241,6 @@ typedef enum
     csl_log_output_file     = 1 << 1,
 } csl_log_output_t;
 
-
 /**
  * enumeration of log time field
  */
@@ -247,7 +254,6 @@ typedef enum
     csl_log_time_field_second       = 1 << 5,
     csl_log_time_field_timestamp    = 1 << 6,
 } csl_log_time_field_t;
-
 
 /**
  * structure of log config
@@ -272,16 +278,44 @@ typedef struct
 } csl_logger_t;
 
 
-typedef struct
-{
-    csl_list_object(void)
-} csl_list_object_header_t;
+/**
+ * function declaration
+ */
 
-typedef struct
-{
-    csl_bag_object(void)
-} csl_bag_object_header_t;
+void *csl_memory_copy(void *dst, const void *src, size_t size);
+void *csl_memory_move(void *dst, const void *src, size_t size);
+void *csl_memory_move2(void *dst, const void *src, size_t size);
+void *csl__expand_capacity(void *object);
+void *csl__reduce_capacity(void *object);
+void *csl_push_back(void *object, const void *data);
+void *csl_pop_back(void *object, void *data);
+void *csl_push_front(void *object, const void *data);
+void *csl_pop_front(void *object, void *data);
 
+
+double csl_timer_difftime(const csl_timer_t *timer);
+void csl_timer_start(csl_timer_t *timer);
+double csl_timer_end(csl_timer_t *timer);
+
+time_t csl_time(time_t *timestamp);
+csl_time_t *csl_tm2time(const struct tm *_tm, csl_time_t *t);
+struct tm *csl_time2tm(const csl_time_t *t, struct tm *_tm);
+struct tm *csl_timestamp2tm(const time_t *timestamp, struct tm *_tm);
+time_t *csl_tm2timestamp(const struct tm *_tm, time_t *timestamp);
+csl_time_t *csl_timestamp2time(const time_t *timestamp, csl_time_t *t);
+time_t *csl_time2timestamp(const csl_time_t *t, time_t *timestamp);
+csl_time_t *csl_localtime(csl_time_t *t, const time_t *timestamp);
+char *csl_asctime(char *buffer, size_t buffer_size, const csl_time_t *t);
+size_t csl_strftime(char *buffer, size_t buffer_size, const char *format, const csl_time_t *t);
+double csl_difftime(const csl_time_t *t_end, const csl_time_t *t_begin);
+csl_time_t *csl_now(csl_time_t *t);
+
+
+void csl_log_write(csl_log_level_t log_level, const char *format, ...);
+
+
+
+#ifdef CSL_IMPLEMENTATION
 
 void *csl_memory_copy(void *dst, const void *src, size_t size)
 {
