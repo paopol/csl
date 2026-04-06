@@ -2,7 +2,10 @@
 *.obj
 *.exe
 *.out
+*.bin
 *.a
 *.so
 *.lib
 *.dll
+*.txt
+*.log

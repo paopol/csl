@@ -2,8 +2,11 @@
 #define CSL_H
 
 #include <assert.h>
+#include <float.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,6 +18,9 @@
 /**
  * MICRO DEFINITIONS FOR CONSTANT
  */
+
+ #define csl_null_ptr ((void *)0)
+
 #define csl_maximum_capacity_byte_size 0x40000000
 #define csl_max_file_path_length 256
 #define csl_max_buffer_size 1024
@@ -25,7 +31,8 @@
 #define csl_default_time_format3    "%Y 年 %m 月 %d 日 %H:%M:%S"
 #define csl_time_expand_all(t)      (t).year, (t).month, (t).mday, (t).hour, (t).minute, (t).second
 
-#define csl_null_ptr ((void *)0)
+#define csl_default_input_stream    stdin
+#define csl_default_output_stream   stdout
 
 /**
  * MICRO DEFINITIONS FOR BASIC UTIL
@@ -40,6 +47,19 @@
 #define csl_check_type_ptr(var1, var2)      (void)((var1) == (var2))
 
 #define csl_array_size(array) (sizeof(array) / sizeof(*array))
+
+#define csl_ptr_dereference(type, var)              (*(type *)var)
+#define csl_ptr_dereference_const(type, var)        (*(const type *)var)
+#define csl_ptr_assign(type, lvar, rvar)            (*(type *)lvar = *(type *)rvar)
+#define csl_ptr_assign_const(type, lvar, rvar)      (*(type *)lvar = *(const type *)rvar)
+
+#define csl_malloc_safe(type, ...)  ((type *)csl_checked_malloc(sizeof(type), csl_default_output_stream, ##__VA_ARGS__))
+#define csl_malloc(type)            ((type *)malloc(sizeof(type)))
+#define csl_calloc(size, type)      ((type *)calloc(size, sizeof(type)))
+#define csl_free(var)               free(var)
+
+#define csl_micro_concat(x, y) x##y
+#define csl_micro_str(x) #x
 
 /**
  * MICRO DEFINITIONS WITH RETURN
@@ -67,6 +87,18 @@
 #define csl_unreachable(msg)    csl_report(stderr, csl_null_ptr, "UNREACHABLE", msg)
 #define csl_todo(msg)           csl_report(stderr, csl_null_ptr, "TODO", msg)
 #define csl_assert(expression)  csl_report(stderr, expression, "ASSERT", #expression)
+
+/**
+ * MICRO DEFINITIONS FOR LOG
+ */
+#define csl_log_none(format, ...)   csl_log_write(csl_log_level_none, format, ##__VA_ARGS__)
+#define csl_log_fatal(format, ...)  csl_log_write(csl_log_level_fatal, format, ##__VA_ARGS__)
+#define csl_log_error(format, ...)  csl_log_write(csl_log_level_error, format, ##__VA_ARGS__)
+#define csl_log_warn(format, ...)   csl_log_write(csl_log_level_warn, format, ##__VA_ARGS__)
+#define csl_log_info(format, ...)   csl_log_write(csl_log_level_info, format, ##__VA_ARGS__)
+#define csl_log_debug(format, ...)  csl_log_write(csl_log_level_debug, format, ##__VA_ARGS__)
+#define csl_log_trace(format, ...)  csl_log_write(csl_log_level_trace, format, ##__VA_ARGS__)
+#define csl_log_cnts(format, ...)   csl_log_write(csl_log_level_cnts, format, ##__VA_ARGS__)
 
 /**
  * MICRO DEFINITIONS FOR OPERATING STRUCTURE
@@ -138,18 +170,29 @@
         (value) = (object).data[--(object).size];   \
     } while (0)
 
-/**
- * MICRO DEFINITIONS FOR LOG
- */
-#define csl_log_none(format, ...)   csl_log_write(csl_log_level_none, format, ##__VA_ARGS__)
-#define csl_log_fatal(format, ...)  csl_log_write(csl_log_level_fatal, format, ##__VA_ARGS__)
-#define csl_log_error(format, ...)  csl_log_write(csl_log_level_error, format, ##__VA_ARGS__)
-#define csl_log_warn(format, ...)   csl_log_write(csl_log_level_warn, format, ##__VA_ARGS__)
-#define csl_log_info(format, ...)   csl_log_write(csl_log_level_info, format, ##__VA_ARGS__)
-#define csl_log_debug(format, ...)  csl_log_write(csl_log_level_debug, format, ##__VA_ARGS__)
-#define csl_log_trace(format, ...)  csl_log_write(csl_log_level_trace, format, ##__VA_ARGS__)
-#define csl_log_cnts(format, ...)   csl_log_write(csl_log_level_cnts, format, ##__VA_ARGS__)
 
+
+/**
+ * type definition of basic data types
+ */
+typedef char        csl_char_t;
+typedef short       csl_short_t;
+typedef int         csl_int_t;
+typedef long        csl_long_t;
+typedef long long   csl_long_long_t;
+typedef float       csl_float_t;
+typedef float       csl_float32_t;
+typedef double      csl_double_t;
+typedef double      csl_float64_t;
+
+typedef int8_t      csl_int8_t;
+typedef int16_t     csl_int16_t;
+typedef int32_t     csl_int32_t;
+typedef int64_t     csl_int64_t;
+typedef uint8_t     csl_uint8_t;
+typedef uint16_t    csl_uint16_t;
+typedef uint32_t    csl_uint32_t;
+typedef uint64_t    csl_uint64_t;
 
 
 /**
@@ -169,24 +212,6 @@ typedef enum
     csl_sign_negative = -1,
     csl_sign_positive = 1,
 } csl_sign_type_t;
-
-
-
-typedef struct
-{
-    csl_buffer_object(void)
-} csl_buffer_object_header_t;
-
-typedef struct
-{
-    csl_list_object(void)
-} csl_list_object_header_t;
-
-typedef struct
-{
-    csl_bag_object(void)
-} csl_bag_object_header_t;
-
 
 /**
  * structure of timer
@@ -228,8 +253,14 @@ typedef enum
     csl_log_level_cnts,
 } csl_log_level_t;
 
-static const char *csl_log_level_names[] = {
-    "NONE", "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE", 
+static const char *csl_log_level_names[csl_log_level_cnts] = {
+    [csl_log_level_none]    = "NONE", 
+    [csl_log_level_fatal]   = "FATAL", 
+    [csl_log_level_error]   = "ERROR", 
+    [csl_log_level_warn]    = "WARN", 
+    [csl_log_level_info]    = "INFO", 
+    [csl_log_level_debug]   = "DEBUG", 
+    [csl_log_level_trace]   = "TRACE", 
 };
 
 /**
@@ -256,7 +287,7 @@ typedef enum
 } csl_log_time_field_t;
 
 /**
- * structure of log config
+ * structure of log configuration
  */
 typedef struct
 {
@@ -278,20 +309,146 @@ typedef struct
 } csl_logger_t;
 
 
+
+typedef struct
+{
+    csl_buffer_object(void)
+} csl_buffer_object_header_t;
+
+typedef struct
+{
+    csl_list_object(void)
+} csl_list_object_header_t;
+
+typedef struct
+{
+    csl_bag_object(void)
+} csl_bag_object_header_t;
+
+
+
+/**
+ * structure of type operations
+ */
+typedef struct csl_type_ops
+{
+    void *(*constructor)(void *self, const void *other);
+    void *(*copy)(const void *other);
+    void *(*move)(void *self, const void *other);
+    void (*destructor)(void *self);
+
+    int (*compare)(const void *v1, const void *v2);
+    csl_bool_t (*equal)(const void *v1, const void *v2);
+
+    uint64_t (*hash)(const void *self);
+
+    char *(*to_string)(const void *self);
+    void *(*from_string)(const char *self_str);
+
+    void (*dump)(const void *self, size_t indent);
+} csl_type_ops_t;
+
+/**
+ * structure of type information
+ */
+typedef struct csl_type_info
+{
+    const char *name;
+    size_t size;
+    csl_type_ops_t *ops;
+    struct csl_type_info *parent;
+
+    void *(*cast)(const void *self, const struct csl_type_info *type);
+} csl_type_info_t;
+
+/**
+ * structure of bag operations
+ */
+typedef struct csl_bag csl_bag_t;
+typedef struct csl_bag_ops
+{
+    /* read */
+    size_t (*size)(const csl_bag_t *bag);
+    size_t (*capacity)(const csl_bag_t *bag);
+    void *(*data)(const csl_bag_t *bag);
+
+    csl_bool_t (*empty)(const csl_bag_t *bag);
+
+    /* visit */
+    void *(*get)(const csl_bag_t *bag, size_t index);
+    void *(*find)(const csl_bag_t *bag, const void *item, csl_bool_t (*equal)(const void *item1, const void *item2));
+
+    /* create */
+    csl_bool_t (*append)(csl_bag_t *bag, const void *item);
+    csl_bool_t (*insert)(csl_bag_t *bag, size_t index, const void *item);
+    csl_bool_t (*append_all)(csl_bag_t *bag, const void *items, size_t size);
+    
+    /* delete */
+    csl_bool_t (*remove)(csl_bag_t *bag, size_t index);
+    void *(*pop)(csl_bag_t *bag);
+    void *(*detach)(csl_bag_t *bag, size_t index);
+
+    /* manage */
+    csl_bool_t (*reserve)(csl_bag_t *bag, size_t new_capacity);
+    void (*shrink)(csl_bag_t *bag);
+
+    void (*clear)(csl_bag_t *bag);
+    void (*destroy)(csl_bag_t *bag);
+
+    /* other */
+    void *(*clone)(const csl_bag_t *bag);
+} csl_bag_ops_t;
+
+/**
+ * structure of bag
+ */
+typedef struct csl_bag
+{
+    size_t size;
+    size_t capacity;
+    void *data;
+    csl_bool_t owns_data;
+    csl_bag_ops_t *ops;
+    csl_type_info_t *type;
+} csl_bag_t;
+
+
+/**
+ * structure of string builder
+ */
+typedef struct csl_string_builder
+{
+    char *data;
+    size_t length;
+    size_t capacity;
+} csl_string_builder_t;
+
+/**
+ * structure of string buffer
+ */
+typedef struct csl_string_buffer
+{
+    char *data;
+    size_t length;
+    size_t capacity;
+    pthread_mutex_t mutex;
+} csl_string_buffer_t;
+
+/**
+ * structure of string view
+ */
+typedef struct csl_string_view
+{
+    const char *data;
+    size_t count;
+} csl_string_view_t;
+
+
 /**
  * function declaration
  */
 
-void *csl_memory_copy(void *dst, const void *src, size_t size);
-void *csl_memory_move(void *dst, const void *src, size_t size);
-void *csl_memory_move2(void *dst, const void *src, size_t size);
-void *csl__expand_capacity(void *object);
-void *csl__reduce_capacity(void *object);
-void *csl_push_back(void *object, const void *data);
-void *csl_pop_back(void *object, void *data);
-void *csl_push_front(void *object, const void *data);
-void *csl_pop_front(void *object, void *data);
-
+void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...);
 
 double csl_timer_difftime(const csl_timer_t *timer);
 void csl_timer_start(csl_timer_t *timer);
@@ -314,177 +471,42 @@ csl_time_t *csl_now(csl_time_t *t);
 void csl_log_write(csl_log_level_t log_level, const char *format, ...);
 
 
+void *csl_memory_copy(void *dst, const void *src, size_t size);
+void *csl_memory_move(void *dst, const void *src, size_t size);
+void *csl_memory_move2(void *dst, const void *src, size_t size);
+void *csl_memory_set(void *dst, char value, size_t size);
+
+char *csl_string_copy(char *dst, const char *src);
+size_t csl_string_length(const char *str);
+
+
+void *csl__expand_capacity(void *object);
+void *csl__reduce_capacity(void *object);
+void *csl_push_back(void *object, const void *data);
+void *csl_pop_back(void *object, void *data);
+void *csl_push_front(void *object, const void *data);
+void *csl_pop_front(void *object, void *data);
+
+
 
 #ifdef CSL_IMPLEMENTATION
 
-void *csl_memory_copy(void *dst, const void *src, size_t size)
+void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...)
 {
-    csl_return_value_if(!dst || !src || dst == src, dst);
-
-    char *d = dst;
-    const char *s = src;
+    void *p = malloc(size);
     
-    while (size-- > 0)
+    if (!p)
     {
-        *d++ = *s++;
+        va_list args;
+
+        va_start(args, format);
+        vfprintf(stream, format, args);
+        va_end(args);
+
+        abort();
     }
 
-    return dst;
-}
-
-void *csl_memory_move(void *dst, const void *src, size_t size)
-{
-    csl_return_value_if(!dst || !src || dst == src, dst);
-
-    char *d = dst;
-    const char *s = src;
-    int direction = 1;
-
-    if (s < d && d < s + size)
-    {
-        d += size - 1;
-        s += size - 1;
-
-        direction = -1;
-    }
-    
-    for (size_t i = 0; i < size; i++)
-    {
-        *d = *s;
-
-        d += direction;
-        s += direction;
-    }
-
-    return dst;
-}
-
-void *csl_memory_move2(void *dst, const void *src, size_t size)
-{
-    csl_return_value_if(!dst || !src || dst == src, dst);
-
-    char *d = dst;
-    const char *s = src;
-
-    if (s < d && d < s + size)
-    {
-        d += size - 1;
-        s += size - 1;
-
-        while (size-- > 0)
-        {
-            *d-- = *s--;
-        }
-    }
-    else
-    {
-        while (size-- > 0)
-        {
-            *d++ = *s++;
-        }
-    }
-
-    return dst;
-}
-
-void *csl__expand_capacity(void *object)
-{
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    size_t new_capacity = 2 * obj->capacity + 1;
-    void *new_data = realloc(obj->data, new_capacity * obj->esize);
-
-    csl_assert(new_data);
-
-    obj->capacity = new_capacity;
-    obj->data = new_data;
-
-    return object;
-}
-
-void *csl__reduce_capacity(void *object)
-{
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    size_t new_capacity = obj->capacity / 2;
-    void *new_data = realloc(obj->data, new_capacity * obj->esize);
-
-    csl_assert(new_data);
-
-    obj->capacity = new_capacity;
-    obj->data = new_data;
-
-    return object;
-}
-
-void *csl_push_back(void *object, const void *data)
-{
-    csl_return_null_if(!object || !data);
-
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    if (obj->size >= obj->capacity)
-    {
-        csl__expand_capacity(object);
-    }
-
-    csl_memory_copy(csl_end(*obj), data, obj->esize);
-    ++obj->size;
-
-    return object;
-}
-
-void *csl_pop_back(void *object, void *data)
-{
-    csl_return_null_if(!object);
-
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    csl_return_null_if(obj->size < 1);
-
-    csl_memory_copy(data, csl_last(*obj), obj->esize);
-    --obj->size;
-
-    return object;
-}
-
-void *csl_push_front(void *object, const void *data)
-{
-    csl_return_null_if(!object || !data);
-
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    if (obj->size >= obj->capacity)
-    {
-        csl__expand_capacity(object);
-    }
-
-    csl_memory_move(csl_pos(*obj, 1), csl_pos(*obj, 0), obj->size * obj->esize);
-
-    csl_memory_copy(csl_begin(*obj), data, obj->esize);
-    ++obj->size;
-
-    /* obj->index = (char *)obj->index + obj->esize; */
-
-    return object;
-}
-
-void *csl_pop_front(void *object, void *data)
-{
-    csl_return_null_if(!object);
-
-    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
-
-    csl_return_null_if(obj->size < 1);
-
-    csl_memory_copy(data, csl_begin(*obj), obj->esize);
-
-    csl_memory_copy(csl_pos(*obj, 0), csl_pos(*obj, 1), (obj->size - 1) * obj->esize);
-    --obj->size;
-
-    /* if (obj->index >= csl_pos(*obj, 1)) { obj->index = (char *)obj->index - obj->esize; } */
-
-    return object;
+    return p;
 }
 
 
@@ -678,6 +700,292 @@ void csl_log_write(csl_log_level_t log_level, const char *format, ...)
 
     fprintf(stream, "\n");
 }
+
+
+void *csl_memory_copy(void *dst, const void *src, size_t size)
+{
+    csl_return_value_if(!dst || !src || dst == src, dst);
+
+    char *d = dst;
+    const char *s = src;
+    
+    while (size-- > 0)
+    {
+        *d++ = *s++;
+    }
+
+    return dst;
+}
+
+void *csl_memory_move(void *dst, const void *src, size_t size)
+{
+    csl_return_value_if(!dst || !src || dst == src, dst);
+
+    char *d = dst;
+    const char *s = src;
+    int direction = 1;
+
+    if (s < d && d < s + size)
+    {
+        d += size - 1;
+        s += size - 1;
+
+        direction = -1;
+    }
+    
+    for (size_t i = 0; i < size; ++i)
+    {
+        *d = *s;
+
+        d += direction;
+        s += direction;
+    }
+
+    return dst;
+}
+
+void *csl_memory_move2(void *dst, const void *src, size_t size)
+{
+    csl_return_value_if(!dst || !src || dst == src, dst);
+
+    char *d = dst;
+    const char *s = src;
+
+    if (s < d && d < s + size)
+    {
+        d += size - 1;
+        s += size - 1;
+
+        while (size-- > 0)
+        {
+            *d-- = *s--;
+        }
+    }
+    else
+    {
+        while (size-- > 0)
+        {
+            *d++ = *s++;
+        }
+    }
+
+    return dst;
+}
+
+void *csl_memory_set(void *dst, char value, size_t size)
+{
+    csl_return_value_if(!dst || !size, dst);
+
+    char *d = dst;
+ 
+    while (size-- > 0)
+    {
+        *d++ = value;
+    }
+
+    return dst;
+}
+
+
+char *csl_string_copy(char *dst, const char *src)
+{
+    csl_return_value_if(!dst || !src, dst);
+
+    while (*src)
+    {
+        *dst++ = *src;
+    }
+
+    return dst;
+}
+
+size_t csl_string_length(const char *str)
+{
+    csl_return_value_if(!str, 0);
+
+    const char *start = str;
+
+    while (*str)
+    {
+        ++str;
+    }
+
+    return (size_t)(str - start);
+}
+
+/*
+csl_string_builder_t *csl_string_builder_create(const char *str)
+{
+    csl_string_builder_t *sb = csl_calloc(1, csl_string_builder_t);
+
+    csl_assert(sb);
+
+    csl_return_value_if(!str, sb);
+
+    sb->length = csl_string_length(str);
+    sb->capacity = sb->length + 1;
+
+    sb->data = csl_calloc(sb->capacity, char);
+    csl_assert(sb->data);
+    csl_memory_copy(sb->data, str, sb->length * sizeof(char));
+    sb->data[sb->length] = '\0';
+
+    return sb;
+}
+
+csl_string_builder_t *csl_string_builder_append_char(csl_string_builder_t *sb, char c)
+{
+    csl_return_value_if(!sb, sb);
+
+    if (sb->length + 1 >= sb->capacity)
+    {
+        size_t new_capacity = sb->capacity * 2 + 1;
+        char *new_data = realloc(sb->data, new_capacity * sizeof(char));
+
+        csl_assert(new_data);
+
+        sb->capacity = new_capacity;
+        sb->data = new_data;
+    }
+
+    sb->data[sb->length++] = c;
+    sb->data[sb->length] = '\0';
+
+    return sb;
+}
+
+csl_string_builder_t *csl_string_builder_append_str(csl_string_builder_t *sb, const char *str)
+{
+    csl_return_value_if(!sb || !str, sb);
+
+    size_t len = sb->length + csl_string_length(str);
+
+    if (len >= sb->capacity)
+    {
+        size_t new_capacity = 2 * sb->capacity + 1;
+
+        while (new_capacity > sb->capacity && len >= new_capacity)
+        {
+            new_capacity = 2 * new_capacity + 1;
+        }
+
+        char *new_data = realloc(sb->data, new_capacity * sizeof(char));
+
+        csl_assert(new_data);
+
+        sb->capacity = new_capacity;
+        sb->data = new_data;
+    }
+
+    csl_string_copy(sb->data + sb->length, str);
+    sb->length = len;
+    sb->data[sb->length] = '\0';
+
+    return sb;
+}
+*/
+
+void *csl__expand_capacity(void *object)
+{
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    size_t new_capacity = 2 * obj->capacity + 1;
+    void *new_data = realloc(obj->data, new_capacity * obj->esize);
+
+    csl_assert(new_data);
+
+    obj->capacity = new_capacity;
+    obj->data = new_data;
+
+    return object;
+}
+
+void *csl__reduce_capacity(void *object)
+{
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    size_t new_capacity = obj->capacity / 2;
+    void *new_data = realloc(obj->data, new_capacity * obj->esize);
+
+    csl_assert(new_data);
+
+    obj->capacity = new_capacity;
+    obj->data = new_data;
+
+    return object;
+}
+
+void *csl_push_back(void *object, const void *data)
+{
+    csl_return_null_if(!object || !data);
+
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    if (obj->size >= obj->capacity)
+    {
+        csl__expand_capacity(object);
+    }
+
+    csl_memory_copy(csl_end(*obj), data, obj->esize);
+    ++obj->size;
+
+    return object;
+}
+
+void *csl_pop_back(void *object, void *data)
+{
+    csl_return_null_if(!object);
+
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    csl_return_null_if(obj->size < 1);
+
+    csl_memory_copy(data, csl_last(*obj), obj->esize);
+    --obj->size;
+
+    return object;
+}
+
+void *csl_push_front(void *object, const void *data)
+{
+    csl_return_null_if(!object || !data);
+
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    if (obj->size >= obj->capacity)
+    {
+        csl__expand_capacity(object);
+    }
+
+    csl_memory_move(csl_pos(*obj, 1), csl_pos(*obj, 0), obj->size * obj->esize);
+
+    csl_memory_copy(csl_begin(*obj), data, obj->esize);
+    ++obj->size;
+
+    /* obj->index = (char *)obj->index + obj->esize; */
+
+    return object;
+}
+
+void *csl_pop_front(void *object, void *data)
+{
+    csl_return_null_if(!object);
+
+    csl_list_object_header_t *obj = (csl_list_object_header_t *)object;
+
+    csl_return_null_if(obj->size < 1);
+
+    csl_memory_copy(data, csl_begin(*obj), obj->esize);
+
+    csl_memory_copy(csl_pos(*obj, 0), csl_pos(*obj, 1), (obj->size - 1) * obj->esize);
+    --obj->size;
+
+    /* if (obj->index >= csl_pos(*obj, 1)) { obj->index = (char *)obj->index - obj->esize; } */
+
+    return object;
+}
+
+
 
 
 #endif /* CSL_IMPLEMENTATION */
