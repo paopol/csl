@@ -16,7 +16,7 @@
 /* #define CSL_IMPLEMENTATION */
 
 /**
- * MICRO DEFINITIONS FOR CONSTANT
+ * MACRO DEFINITIONS FOR CONSTANT
  */
 
  #define csl_null_ptr ((void *)0)
@@ -35,7 +35,7 @@
 #define csl_default_output_stream   stdout
 
 /**
- * MICRO DEFINITIONS FOR BASIC UTIL
+ * MACRO DEFINITIONS FOR BASIC UTIL
  */
 
 #define csl_unused_expression(var)  (void)(var)
@@ -58,11 +58,16 @@
 #define csl_calloc(size, type)      ((type *)calloc(size, sizeof(type)))
 #define csl_free(var)               free(var)
 
-#define csl_micro_concat(x, y) x##y
-#define csl_micro_str(x) #x
+#define csl_macro_concat(x, y) x##y
+#define csl_macro_str(x) #x
+
+#define csl_ternary_expression(expression, v1, v2) ((expression) ? (v1) : (v2))
+
+#define csl_two_way_cmp(v1, v2)     ((v1) > (v2))
+#define csl_three_way_cmp(v1, v2)   (((v1) > (v2)) - ((v1) < (v2)))
 
 /**
- * MICRO DEFINITIONS WITH RETURN
+ * MACRO DEFINITIONS WITH RETURN
  */
 #define csl_return_value_if(expression, value)      do { if (!!(expression)) { return (value); } } while (0)
 #define csl_return_value_if_not(expression, value)  csl_return_value_if(!(expression), value)
@@ -72,7 +77,7 @@
 #define csl_return_null_if_not(expression)          csl_return_value_if_not(!(expression), csl_null_ptr)
 
 /**
- * MICRO DEFINITIONS FOR REPORTING INFO
+ * MACRO DEFINITIONS FOR REPORTING INFO
  */
 #define csl_report(stream, expression, msg_type_str, msg) \
     do                                                                                  \
@@ -89,7 +94,7 @@
 #define csl_assert(expression)  csl_report(stderr, expression, "ASSERT", #expression)
 
 /**
- * MICRO DEFINITIONS FOR LOG
+ * MACRO DEFINITIONS FOR LOG
  */
 #define csl_log_none(format, ...)   csl_log_write(csl_log_level_none, format, ##__VA_ARGS__)
 #define csl_log_fatal(format, ...)  csl_log_write(csl_log_level_fatal, format, ##__VA_ARGS__)
@@ -101,13 +106,13 @@
 #define csl_log_cnts(format, ...)   csl_log_write(csl_log_level_cnts, format, ##__VA_ARGS__)
 
 /**
- * MICRO DEFINITIONS FOR OPERATING STRUCTURE
+ * MACRO DEFINITIONS FOR OPERATING STRUCTURE
  */
 #define csl_offset_of(type, member)         ((size_t)(((type *)0)->member))
 #define csl_container_of(ptr, type, member) (type *)((size_t)ptr - (size_t)csl_offset_of(type, member))
 
 /**
- * MICRO DEFINITIONS FOR DEFINING STRUCTURE
+ * MACRO DEFINITIONS FOR DEFINING STRUCTURE
  */
 #define csl_buffer_object(item_type) \
     size_t size;                        \
@@ -123,7 +128,7 @@
     csl_buffer_object(item_type)
 
 /**
- * MICRO DEFINITIONS FOR INITIALIZING STRUCTURE
+ * MACRO DEFINITIONS FOR INITIALIZING STRUCTURE
  */
 #define csl_buffer_initializer(item_type) \
     {.size = 0, .capacity = 0, .esize = sizeof(item_type), .data = csl_null_ptr}
@@ -132,7 +137,7 @@
 #define csl_bag_object_initializer(item_type) csl_buffer_initializer
 
 /**
- * MICRO DEFINITIONS FOR OPERATING OBJECT
+ * MACRO DEFINITIONS FOR OPERATING OBJECT
  */
 #define csl_pos(object, pos)    ((void *)((char *)(object).data + (pos) * (object).esize))
 #define csl_begin(object)       csl_pos(object, 0)
@@ -471,13 +476,16 @@ csl_time_t *csl_now(csl_time_t *t);
 void csl_log_write(csl_log_level_t log_level, const char *format, ...);
 
 
-void *csl_memory_copy(void *dst, const void *src, size_t size);
-void *csl_memory_move(void *dst, const void *src, size_t size);
-void *csl_memory_move2(void *dst, const void *src, size_t size);
-void *csl_memory_set(void *dst, char value, size_t size);
+void *csl_memory_copy(void *_dst, const void *_src, size_t _size);
+void *csl_memory_move(void *_dst, const void *_src, size_t _size);
+void *csl_memory_set(void *_dst, char _value, size_t _size);
+int csl_memory_compare(const void *_data1, const void *_data2, size_t _size);
 
-char *csl_string_copy(char *dst, const char *src);
-size_t csl_string_length(const char *str);
+size_t csl_string_length(const char *_str);
+char *csl_string_copy(char *_dst, const char *_src);
+int csl_string_compare(const char *_str1, const char *_str2);
+char *csl_string_copy_n(char *_dst, const char *_src, size_t _n);
+int csl_string_compare_n(const char *_str1, const char *_str2, size_t _n);
 
 
 void *csl__expand_capacity(void *object);
@@ -702,115 +710,147 @@ void csl_log_write(csl_log_level_t log_level, const char *format, ...)
 }
 
 
-void *csl_memory_copy(void *dst, const void *src, size_t size)
+void *csl_memory_copy(void *_dst, const void *_src, size_t _size)
 {
-    csl_return_value_if(!dst || !src || dst == src, dst);
+    csl_return_value_if(!_dst || !_src || _dst == _src || !_size, _dst);
 
-    char *d = dst;
-    const char *s = src;
+    char *__dst = _dst;
+    const char *__src = _src;
     
-    while (size-- > 0)
+    for (size_t i = 0; i < _size; ++i)
     {
-        *d++ = *s++;
+        __dst[i] = __src[i];
     }
 
-    return dst;
+    return _dst;
 }
 
-void *csl_memory_move(void *dst, const void *src, size_t size)
+void *csl_memory_move(void *_dst, const void *_src, size_t _size)
 {
-    csl_return_value_if(!dst || !src || dst == src, dst);
+    csl_return_value_if(!_dst || !_src || _dst == _src || !_size, _dst);
 
-    char *d = dst;
-    const char *s = src;
-    int direction = 1;
+    char *__dst = _dst;
+    const char *__src = _src;
 
-    if (s < d && d < s + size)
+    if (__dst < __src || __src + _size <= __dst)
     {
-        d += size - 1;
-        s += size - 1;
-
-        direction = -1;
-    }
-    
-    for (size_t i = 0; i < size; ++i)
-    {
-        *d = *s;
-
-        d += direction;
-        s += direction;
-    }
-
-    return dst;
-}
-
-void *csl_memory_move2(void *dst, const void *src, size_t size)
-{
-    csl_return_value_if(!dst || !src || dst == src, dst);
-
-    char *d = dst;
-    const char *s = src;
-
-    if (s < d && d < s + size)
-    {
-        d += size - 1;
-        s += size - 1;
-
-        while (size-- > 0)
+        for (size_t i = 0; i < _size; ++i)
         {
-            *d-- = *s--;
+            __dst[i] = __src[i];
         }
     }
-    else
+    else if (__dst > __src)
     {
-        while (size-- > 0)
+        for (size_t i = _size; i > 0; --i)
         {
-            *d++ = *s++;
+            __dst[i - 1] = __src[i - 1];
         }
     }
 
-    return dst;
+    return _dst;
 }
 
-void *csl_memory_set(void *dst, char value, size_t size)
+void *csl_memory_set(void *_buffer, char _value, size_t _size)
 {
-    csl_return_value_if(!dst || !size, dst);
+    csl_return_value_if(!_buffer || !_size, _buffer);
 
-    char *d = dst;
- 
-    while (size-- > 0)
+    char *p = _buffer;
+
+    for (size_t i = 0; i < _size; ++i)
     {
-        *d++ = value;
+        p[i] = _value;
     }
 
-    return dst;
+    return _buffer;
+}
+
+int csl_memory_compare(const void *_buffer1, const void *_buffer2, size_t _size)
+{
+    csl_return_value_if(_buffer1 == _buffer2 || !_size, 0);
+    csl_return_value_if(!_buffer1, -1);
+    csl_return_value_if(!_buffer2, 1);
+   
+    const unsigned char *p1 = _buffer1;
+    const unsigned char *p2 = _buffer2;
+
+    for (size_t i = 0; i < _size; ++i)
+    {
+        if (p1[i] != p2[i])
+        {
+            return (p1[i] > p2[i]) - (p1[i] < p2[i]);
+        }
+    }
+
+    return 0;
 }
 
 
-char *csl_string_copy(char *dst, const char *src)
+size_t csl_string_length(const char *_str)
 {
-    csl_return_value_if(!dst || !src, dst);
+    csl_return_value_if(!_str, 0);
 
-    while (*src)
+    const char *start = _str;
+
+    while (*_str)
     {
-        *dst++ = *src;
+        ++_str;
     }
 
-    return dst;
+    return (size_t)(_str - start);
 }
 
-size_t csl_string_length(const char *str)
+char *csl_string_copy(char *_dst, const char *_src)
 {
-    csl_return_value_if(!str, 0);
+    csl_return_value_if(!_dst || !_src, _dst);
 
-    const char *start = str;
-
-    while (*str)
+    while (*_src)
     {
-        ++str;
+        *_dst++ = *_src++;
     }
 
-    return (size_t)(str - start);
+    return _dst;
+}
+
+int csl_string_compare(const char *_str1, const char *_str2)
+{
+    csl_return_value_if(_str1 == _str2, 0);
+    csl_return_value_if(!_str1, -1);
+    csl_return_value_if(!_str2, 1);
+
+    while (*_str1 && *_str1 == *_str2)
+    {
+        ++_str1;
+        ++_str2;
+    }
+
+    return (*_str1 > *_str2) - (*_str1 < *_str2);
+}
+
+char *csl_string_copy_n(char *_dst, const char *_src, size_t _n)
+{
+    csl_return_value_if(!_dst || !_src || !_n, _dst);
+
+    while (*_src && _n-- > 0)
+    {
+        *_dst++ = *_src++;
+    }
+
+    return _dst;
+}
+
+int csl_string_compare_n(const char *_str1, const char *_str2, size_t _n)
+{
+    csl_return_value_if(_str1 == _str2 || !_n, 0);
+    csl_return_value_if(!_str1, -1);
+    csl_return_value_if(!_str2, 1);
+
+    while (*_str1 && *_str1 == *_str2 && _n-- > 0)
+    {
+        ++_str1;
+        ++_str2;
+    }
+
+    return (*_str1 > *_str2) - (*_str1 < *_str2);
 }
 
 /*
