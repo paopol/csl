@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -210,9 +211,18 @@ typedef enum
 } csl_bool_t;
 
 /**
+ * structure of complex
+ */
+typedef struct csl_complex
+{
+    float real;
+    float imag;
+} csl_complex_t;
+
+/**
  * enumeration of sign
  */
-typedef enum
+typedef enum csl_sign_type
 {
     csl_sign_negative = -1,
     csl_sign_positive = 1,
@@ -221,7 +231,7 @@ typedef enum
 /**
  * structure of timer
  */
-typedef struct
+typedef struct csl_timer
 {
     clock_t start;
     clock_t end;
@@ -230,7 +240,7 @@ typedef struct
 /**
  * structure of time
  */
-typedef struct
+typedef struct csl_time
 {
     int second; /* 0~61 */
     int minute; /* 0~59 */
@@ -246,7 +256,7 @@ typedef struct
 /**
  * enumeration of log level
  */
-typedef enum
+typedef enum csl_log_level
 {
     csl_log_level_none,
     csl_log_level_fatal,
@@ -271,7 +281,7 @@ static const char *csl_log_level_names[csl_log_level_cnts] = {
 /**
  * enumeration of log ouput
  */
-typedef enum
+typedef enum csl_log_output
 {
     csl_log_output_console  = 1 << 0,
     csl_log_output_file     = 1 << 1,
@@ -280,7 +290,7 @@ typedef enum
 /**
  * enumeration of log time field
  */
-typedef enum
+typedef enum csl_log_time_field
 {
     csl_log_time_field_year         = 1 << 0,
     csl_log_time_field_month        = 1 << 1,
@@ -294,7 +304,7 @@ typedef enum
 /**
  * structure of log configuration
  */
-typedef struct
+typedef struct csl_log_config
 {
     csl_log_level_t lowest_level;
     csl_log_output_t output_mask;
@@ -308,24 +318,24 @@ typedef struct
 /**
  * structure of logger
  */
-typedef struct
+typedef struct csl_logger
 {
     csl_log_config_t config;
 } csl_logger_t;
 
 
 
-typedef struct
+typedef struct csl_buffer_object_header
 {
     csl_buffer_object(void)
 } csl_buffer_object_header_t;
 
-typedef struct
+typedef struct csl_list_object_header
 {
     csl_list_object(void)
 } csl_list_object_header_t;
 
-typedef struct
+typedef struct csl_bag_object_header
 {
     csl_bag_object(void)
 } csl_bag_object_header_t;
