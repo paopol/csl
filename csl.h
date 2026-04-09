@@ -465,10 +465,16 @@ typedef struct csl_string_view
 
 void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...);
 
+/**
+ * timer function
+ */
 double csl_timer_difftime(const csl_timer_t *timer);
 void csl_timer_start(csl_timer_t *timer);
 double csl_timer_end(csl_timer_t *timer);
 
+/**
+ * time function
+ */
 time_t csl_time(time_t *timestamp);
 csl_time_t *csl_tm2time(const struct tm *_tm, csl_time_t *t);
 struct tm *csl_time2tm(const csl_time_t *t, struct tm *_tm);
@@ -482,22 +488,31 @@ size_t csl_strftime(char *buffer, size_t buffer_size, const char *format, const 
 double csl_difftime(const csl_time_t *t_end, const csl_time_t *t_begin);
 csl_time_t *csl_now(csl_time_t *t);
 
-
+/**
+ * log function
+ */
 void csl_log_write(csl_log_level_t log_level, const char *format, ...);
 
-
+/**
+ * memory function
+ */
 void *csl_memory_copy(void *_dst, const void *_src, size_t _size);
 void *csl_memory_move(void *_dst, const void *_src, size_t _size);
 void *csl_memory_set(void *_dst, char _value, size_t _size);
 int csl_memory_compare(const void *_data1, const void *_data2, size_t _size);
 
+/**
+ * string function
+ */
 size_t csl_string_length(const char *_str);
 char *csl_string_copy(char *_dst, const char *_src);
 int csl_string_compare(const char *_str1, const char *_str2);
 char *csl_string_copy_n(char *_dst, const char *_src, size_t _n);
 int csl_string_compare_n(const char *_str1, const char *_str2, size_t _n);
 
-
+/**
+ * sequence function
+ */
 void *csl__expand_capacity(void *object);
 void *csl__reduce_capacity(void *object);
 void *csl_push_back(void *object, const void *data);
