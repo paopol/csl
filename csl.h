@@ -20,7 +20,9 @@
  * MACRO DEFINITIONS FOR CONSTANT
  */
 
- #define csl_null_ptr ((void *)0)
+#define csl_null_ptr ((void *)0)
+
+#define csl_epsilon 1e-12
 
 #define csl_maximum_capacity_byte_size 0x40000000
 #define csl_max_file_path_length 256
@@ -211,15 +213,6 @@ typedef enum
 } csl_bool_t;
 
 /**
- * structure of complex
- */
-typedef struct csl_complex
-{
-    float real;
-    float imag;
-} csl_complex_t;
-
-/**
  * enumeration of sign
  */
 typedef enum csl_sign_type
@@ -227,6 +220,15 @@ typedef enum csl_sign_type
     csl_sign_negative = -1,
     csl_sign_positive = 1,
 } csl_sign_type_t;
+
+/**
+ * structure of complex
+ */
+typedef struct csl_complex
+{
+    double real;
+    double imag;
+} csl_complex_t;
 
 /**
  * structure of timer
@@ -466,6 +468,27 @@ typedef struct csl_string_view
 void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...);
 
 /**
+ * complex number function
+ */
+csl_complex_t csl_complex_create(double real, double imag);
+double csl_complex_real(csl_complex_t z);
+double csl_complex_imag(csl_complex_t z);
+csl_complex_t csl_complex_conj(csl_complex_t z);
+double csl_complex_abs(csl_complex_t z);
+double csl_complex_arg(csl_complex_t z);
+csl_complex_t csl_complex_sqrt(csl_complex_t z);
+csl_complex_t csl_complex_exp(csl_complex_t z);
+csl_complex_t csl_complex_ln(csl_complex_t z);
+csl_complex_t csl_complex_sin(csl_complex_t z);
+csl_complex_t csl_complex_cos(csl_complex_t z);
+char *csl_complex_str(csl_complex_t z, char *buffer, size_t buffer_size, int precision);
+void csl_complex_println(csl_complex_t z, int precision);
+csl_complex_t csl_complex_add(csl_complex_t z1, csl_complex_t z2);
+csl_complex_t csl_complex_sub(csl_complex_t z1, csl_complex_t z2);
+csl_complex_t csl_complex_mul(csl_complex_t z1, csl_complex_t z2);
+csl_complex_t csl_complex_div(csl_complex_t z1, csl_complex_t z2);
+
+/**
  * timer function
  */
 double csl_timer_difftime(const csl_timer_t *timer);
@@ -540,6 +563,148 @@ void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...)
     }
 
     return p;
+}
+
+
+csl_complex_t csl_complex_create(double real, double imag)
+{
+    csl_complex_t result;
+
+    result.real = real;
+    result.imag = imag;
+
+    return result;
+}
+
+double csl_complex_real(csl_complex_t z)
+{
+    return z.real;
+}
+
+double csl_complex_imag(csl_complex_t z)
+{
+    return z.imag;
+}
+
+csl_complex_t csl_complex_conj(csl_complex_t z)
+{
+    return csl_complex_create(z.real, -z.imag);
+}
+
+double csl_complex_abs(csl_complex_t z)
+{
+    return sqrt(z.real * z.real + z.imag * z.imag);
+}
+
+double csl_complex_arg(csl_complex_t z)
+{
+    return atan2(z.imag, z.real);
+}
+
+csl_complex_t csl_complex_sqrt(csl_complex_t z)
+{
+    double sqrt_modulus = sqrt(csl_complex_abs(z));
+    double arg_2 = csl_complex_arg(z) / 2.0;
+
+    return csl_complex_create(
+        sqrt_modulus * cos(arg_2), 
+        sqrt_modulus * sin(arg_2)
+    );
+}
+
+csl_complex_t csl_complex_exp(csl_complex_t z)
+{
+    double exp_real = exp(z.real);
+
+    return csl_complex_create(
+        exp_real * cos(z.imag), 
+        exp_real * sin(z.imag)
+    );
+}
+
+csl_complex_t csl_complex_ln(csl_complex_t z)
+{
+    double modulus = csl_complex_abs(z);
+    double arg = csl_complex_arg(z);
+    
+    return csl_complex_create(log(modulus), arg);
+}
+
+csl_complex_t csl_complex_sin(csl_complex_t z)
+{
+    return csl_complex_create(
+        sin(z.real) * cosh(z.imag), 
+        cos(z.real) * sinh(z.imag)
+    );
+}
+
+csl_complex_t csl_complex_cos(csl_complex_t z)
+{
+    return csl_complex_create(
+        cos(z.real) * cosh(z.imag), 
+        -sin(z.real) * sinh(z.imag)
+    );
+}
+
+char *csl_complex_str(csl_complex_t z, char *buffer, size_t buffer_size, int precision)
+{
+    csl_return_value_if(!buffer || !buffer_size, buffer);
+
+    if (precision < 0)
+    {
+        precision = 0;
+    }
+
+    if (z.imag >= 0.0)
+    {
+        snprintf(buffer, buffer_size, "%.*f+%.*fi", precision, z.real, precision, z.imag);
+    }
+    else
+    {
+        snprintf(buffer, buffer_size, "%.*f-%.*fi", precision, z.real, precision, -z.imag);
+    }
+
+    return buffer;
+}
+
+void csl_complex_println(csl_complex_t z, int precision)
+{
+    char buffer[48] = "";
+    size_t buffer_size = sizeof(buffer);
+
+    csl_complex_str(z, buffer, buffer_size, precision);
+
+    fprintf(csl_default_output_stream, "%s\n", buffer);
+}
+
+csl_complex_t csl_complex_add(csl_complex_t z1, csl_complex_t z2)
+{
+    return csl_complex_create(z1.real + z2.real, z1.imag + z2.imag);
+}
+
+csl_complex_t csl_complex_sub(csl_complex_t z1, csl_complex_t z2)
+{
+    return csl_complex_create(z1.real - z2.real, z1.imag - z2.imag);
+}
+
+csl_complex_t csl_complex_mul(csl_complex_t z1, csl_complex_t z2)
+{
+    return csl_complex_create(
+        z1.real * z2.real - z1.imag * z2.imag, 
+        z1.real * z2.imag + z1.imag * z2.real
+    );
+}
+
+csl_complex_t csl_complex_div(csl_complex_t z1, csl_complex_t z2)
+{
+    double denominator = z2.real * z2.real + z2.imag * z2.imag;
+
+    csl_assert(!(denominator < csl_epsilon));
+
+    return csl_complex_create(
+        (z1.real * z2.real + z1.imag * z2.imag) / denominator, 
+        (-z1.real * z2.imag + z1.imag * z2.real) / denominator
+    );
 }
 
 
