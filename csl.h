@@ -1003,6 +1003,36 @@ double csl_timer_end(csl_timer_t *timer)
 }
 
 
+double csl_time_ms2s(long long ms)
+{
+    return ms / 1000.0;
+}
+
+double csl_time_us2s(long long us)
+{
+    return us / 1000000.0;
+}
+
+double csl_time_ns2s(long long ns)
+{
+    return ns / 1000000000.0;
+}
+
+long long csl_time_s2ms(double s)
+{
+    return (long long)(s * 1000.0 + 0.5);
+}
+
+long long csl_time_s2us(double s)
+{
+    return (long long)(s * 1000000.0 + 0.5);
+}
+
+long long csl_time_s2ns(double s)
+{
+    return (long long)(s * 1000000000.0 + 0.5);
+}
+
 time_t csl_time(time_t *timestamp)
 {
     return time(timestamp);
