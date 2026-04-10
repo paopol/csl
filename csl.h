@@ -202,11 +202,10 @@ typedef uint16_t    csl_uint16_t;
 typedef uint32_t    csl_uint32_t;
 typedef uint64_t    csl_uint64_t;
 
-
 /**
  * enumeration of boolean
  */
-typedef enum
+typedef enum csl_bool
 {
     csl_false   = 0,
     csl_true    = 1,
@@ -220,6 +219,20 @@ typedef enum csl_sign_type
     csl_sign_negative = -1,
     csl_sign_positive = 1,
 } csl_sign_type_t;
+
+/**
+ * structure of fraction
+ */
+typedef struct csl_fraction
+{
+    /* if the numerator is 0, the denominator will be set to 1 */
+
+    /* the numerator carries sign information  */
+    long long numerator;
+
+    /* the denominator is always greater than 0 */
+    long long denominator;
+} csl_fraction_t;
 
 /**
  * structure of complex
@@ -467,6 +480,29 @@ typedef struct csl_string_view
 
 void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...);
 
+long long csl_abs(long long x);
+long long csl_gcd(long long a, long long b);
+long long csl_lcm(long long a, long long b);
+
+/**
+ * fraction function
+ */
+csl_fraction_t csl_fraction_create(long long numerator, long long denominator);
+csl_fraction_t csl_fraction_create2(long long numerator);
+csl_fraction_t csl_fraction_d2f(double d, int precision);
+double csl_fraction_f2d(csl_fraction_t f);
+csl_fraction_t csl_fraction_normalize(csl_fraction_t f);
+csl_fraction_t csl_fraction_simplify(csl_fraction_t f);
+csl_fraction_t csl_fraction_reciprocal(csl_fraction_t f);
+char *csl_fraction_str(csl_fraction_t f, char *buffer, size_t buffer_size);
+void csl_fraction_println(csl_fraction_t f);
+csl_fraction_t csl_fraction_pow(csl_fraction_t f, long long n);
+int csl_fraction_compare(csl_fraction_t f1, csl_fraction_t f2);
+csl_fraction_t csl_fraction_add(csl_fraction_t f1, csl_fraction_t f2);
+csl_fraction_t csl_fraction_sub(csl_fraction_t f1, csl_fraction_t f2);
+csl_fraction_t csl_fraction_mul(csl_fraction_t f1, csl_fraction_t f2);
+csl_fraction_t csl_fraction_div(csl_fraction_t f1, csl_fraction_t f2);
+
 /**
  * complex number function
  */
@@ -566,6 +602,227 @@ void *csl_checked_malloc(size_t size, FILE *stream, const char *format, ...)
 }
 
 
+long long csl_abs(long long x)
+{
+    return x >= 0 ? x : -x;
+}
+
+long long csl_gcd(long long a, long long b)
+{
+    return b == 0 ? a : csl_gcd(b, a % b);
+}
+
+long long csl_lcm(long long a, long long b)
+{
+    return a / csl_gcd(b, a % b) * b;
+}
+
+
+csl_fraction_t csl_fraction_create(long long numerator, long long denominator)
+{
+    csl_assert(denominator != 0);
+
+    csl_fraction_t result;
+
+    result.numerator = numerator;
+    result.denominator = denominator;
+
+    return csl_fraction_simplify(result);
+}
+
+csl_fraction_t csl_fraction_create2(long long numerator)
+{
+    return csl_fraction_create(numerator, 1);
+}
+
+csl_fraction_t csl_fraction_d2f(double d, int precision)
+{
+    if (precision < 0)
+    {
+        precision = 0;
+    }
+
+    long long scale = (long long)pow(10.0, (double)precision);
+    long long numerator = (long long)(fabs(d) * scale + 0.5);
+    long long denominator = scale;
+
+    if (d < 0.0)
+    {
+        numerator = -numerator;
+    }
+
+    return csl_fraction_create(numerator, denominator);
+}
+
+double csl_fraction_f2d(csl_fraction_t f)
+{
+    csl_assert(f.denominator != 0);
+
+    return (double)f.numerator / (double)f.denominator;
+}
+
+csl_fraction_t csl_fraction_normalize(csl_fraction_t f)
+{
+    if (f.denominator < 0)
+    {
+        f.numerator = -f.numerator;
+        f.denominator = -f.denominator;
+    }
+
+    if (f.numerator == 0)
+    {
+        f.denominator = 1;
+    }
+
+    return f;
+}
+
+csl_fraction_t csl_fraction_simplify(csl_fraction_t f)
+{
+    long long _gcd = csl_gcd(csl_abs(f.numerator), csl_abs(f.denominator));
+
+    f.numerator /= _gcd;
+    f.denominator /= _gcd;
+
+    return csl_fraction_normalize(f);
+}
+
+csl_fraction_t csl_fraction_reciprocal(csl_fraction_t f)
+{
+    csl_assert(f.numerator != 0);
+
+    long long temp;
+
+    temp = f.numerator;    
+    f.numerator = f.denominator;
+    f.denominator = temp;
+
+    return csl_fraction_simplify(f);
+}
+
+char *csl_fraction_str(csl_fraction_t f, char *buffer, size_t buffer_size)
+{
+    csl_return_value_if(!buffer || !buffer_size, buffer);
+
+    csl_assert(f.denominator != 0);
+
+    f = csl_fraction_simplify(f);
+    
+    if (f.denominator == 1)
+    {
+        snprintf(buffer, buffer_size, "%lld", f.numerator);
+    }
+    else
+    {
+        snprintf(buffer, buffer_size, "%lld/%lld", f.numerator, f.denominator);
+    }
+
+    return buffer;
+}
+
+void csl_fraction_println(csl_fraction_t f)
+{
+    char buffer[48] = "";
+    size_t buffer_size = sizeof(buffer);
+
+    csl_fraction_str(f, buffer, buffer_size);
+
+    fprintf(csl_default_output_stream, "%s\n", buffer);
+}
+
+csl_fraction_t csl_fraction_pow(csl_fraction_t f, long long n)
+{
+    csl_fraction_t result = {1, 1};
+
+    if (n == 0)
+    {
+        return result;
+    }
+
+    if (f.numerator == f.denominator)
+    {
+        return result;
+    }
+
+    if (f.numerator / f.denominator == -1)
+    {
+        if (n & 1)
+        {
+            result.numerator = -1;
+        }
+
+        return result;
+    }
+
+    if (n < 0)
+    {
+        f = csl_fraction_reciprocal(f);
+        n = -n;
+    }
+
+    long long numerator = f.numerator;
+    long long denominator = f.denominator;
+
+    while (n > 0)
+    {
+        if (n & 1)
+        {
+            result.numerator *= numerator;
+            result.denominator *= denominator;
+
+            /* result = csl_fraction_simplify(result); */
+        }
+
+        numerator *= numerator;
+        denominator *= denominator;
+
+        n >>= 1;
+    }
+
+    return csl_fraction_simplify(result);
+}
+
+int csl_fraction_compare(csl_fraction_t f1, csl_fraction_t f2)
+{
+    long long lh = f1.numerator * f2.denominator;
+    long long rh = f1.denominator * f2.numerator;
+
+    return (lh > rh) - (lh < rh);
+}
+
+csl_fraction_t csl_fraction_add(csl_fraction_t f1, csl_fraction_t f2)
+{
+    return csl_fraction_create(
+        f1.numerator * f2.denominator + f1.denominator * f2.numerator, 
+        f1.denominator * f2.denominator
+    );
+}
+
+csl_fraction_t csl_fraction_sub(csl_fraction_t f1, csl_fraction_t f2)
+{
+    return csl_fraction_create(
+        f1.numerator * f2.denominator - f1.denominator * f2.numerator, 
+        f1.denominator * f2.denominator
+    );
+}
+
+csl_fraction_t csl_fraction_mul(csl_fraction_t f1, csl_fraction_t f2)
+{
+    return csl_fraction_create(
+        f1.numerator * f2.numerator, 
+        f1.denominator * f2.denominator
+    );
+}
+
+csl_fraction_t csl_fraction_div(csl_fraction_t f1, csl_fraction_t f2)
+{
+    return csl_fraction_create(
+        f1.numerator * f2.denominator, 
+        f1.denominator * f2.numerator
+    );
+}
+
+
 csl_complex_t csl_complex_create(double real, double imag)
 {
     csl_complex_t result;
@@ -655,13 +912,24 @@ char *csl_complex_str(csl_complex_t z, char *buffer, size_t buffer_size, int pre
         precision = 0;
     }
 
-    if (z.imag >= 0.0)
+    if (fabs(z.imag) < csl_epsilon)
     {
-        snprintf(buffer, buffer_size, "%.*f+%.*fi", precision, z.real, precision, z.imag);
+        snprintf(buffer, buffer_size, "%.*f", precision, z.real);
+    }
+    else if (fabs(z.real) < csl_epsilon)
+    {
+        snprintf(buffer, buffer_size, "%.*fi", precision, z.imag);
     }
     else
     {
-        snprintf(buffer, buffer_size, "%.*f-%.*fi", precision, z.real, precision, -z.imag);
+        if (z.imag >= 0.0)
+        {
+            snprintf(buffer, buffer_size, "%.*f+%.*fi", precision, z.real, precision, z.imag);
+        }
+        else
+        {
+            snprintf(buffer, buffer_size, "%.*f-%.*fi", precision, z.real, precision, -z.imag);
+        }
     }
 
     return buffer;
